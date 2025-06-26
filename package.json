@@ -7,6 +7,5 @@
   },
   "dependencies": {
     "puppeteer": "^22.8.2"
-
   }
 }
