@@ -19,7 +19,8 @@ const puppeteer = require('puppeteer');
   // Step 1: Login (only once; session will be saved)
   console.log('🔐 Opening Messenger...');
   await page.goto('https://www.messenger.com/');
-  await page.waitForTimeout(30000); // wait 30s to log in manually the first time
+ await new Promise(resolve => setTimeout(resolve, 30000)); // wait 30s to log in manually
+
 
   // Step 2: Go to specific thread
   const threadId = '525448593982349'; // <--- Insert your thread ID here!
