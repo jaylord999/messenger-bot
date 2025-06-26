@@ -30,8 +30,17 @@ const THREAD_ID = '525448593982349'; // 🛠 Replace with your actual thread ID
     await page.type('#pass', FB_PASSWORD);
     await page.click('button[name="login"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
-    console.log('✅ Logged in successfully!');
-  } catch (err) {
+
+const currentUrl = page.url();
+if (currentUrl.includes('login.php')) {
+  console.error('❌ Login failed — still on login page.');
+  await page.screenshot({ path: 'login-failed.png' });
+  await browser.close();
+  process.exit(1);
+}
+
+console.log('✅ Logged in successfully and authenticated!');
+
     console.error('⚠️ Login screen not detected — may already be logged in');
   }
 
