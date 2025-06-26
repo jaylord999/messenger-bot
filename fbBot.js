@@ -1,5 +1,9 @@
 const puppeteer = require('puppeteer');
 
+const FB_EMAIL = process.env.FB_EMAIL;
+const FB_PASSWORD = process.env.FB_PASSWORD;
+const THREAD_ID = '525448593982349'; // 🛠 Replace with your actual Messenger thread ID
+
 (async () => {
   const browser = await puppeteer.launch({
     headless: 'new',
@@ -15,27 +19,34 @@ const puppeteer = require('puppeteer');
   });
 
   const page = await browser.newPage();
-
-  // Step 1: Login (only once; session will be saved)
-  console.log('🔐 Opening Messenger...');
+  console.log('🔐 Opening Messenger login...');
   await page.goto('https://www.messenger.com/');
- await new Promise(resolve => setTimeout(resolve, 30000)); // wait 30s to log in manually
 
+  // Auto-login using credentials
+  try {
+    await page.waitForSelector('#email', { timeout: 10000 });
+    await page.type('#email', FB_EMAIL);
+    await page.type('#pass', FB_PASSWORD);
+    await page.click('button[name="login"]');
+    await page.waitForNavigation({ waitUntil: 'networkidle2' });
+    console.log('✅ Logged in successfully!');
+  } catch (err) {
+    console.error('❌ Login failed or already logged in:', err.message);
+  }
 
-  // Step 2: Go to specific thread
-  const threadId = '525448593982349'; // <--- Insert your thread ID here!
-  await page.goto(`https://www.messenger.com/t/${threadId}`);
+  // Go to the specific Messenger thread
+  await page.goto(`https://www.messenger.com/t/${THREAD_ID}`);
   await page.waitForSelector('[data-testid="message-container"]');
 
-  console.log('🤖 Bot started. Listening for new messages...');
+  console.log('🤖 Bot is running...');
 
   let lastMessage = null;
 
   while (true) {
     try {
       const newMessage = await page.evaluate(() => {
-        const list = document.querySelectorAll('[data-testid="message-container"]');
-        const last = list[list.length - 1];
+        const messages = document.querySelectorAll('[data-testid="message-container"]');
+        const last = messages[messages.length - 1];
         const text = last?.querySelector('[dir="auto"]');
         return text ? text.innerText : null;
       });
@@ -44,28 +55,16 @@ const puppeteer = require('puppeteer');
         console.log('📩 New message:', newMessage);
         lastMessage = newMessage;
 
-        // Reply logic
-        const replyTriggers = ['hi', 'hello', 'kamusta'];
-        if (replyTriggers.some(t => newMessage.toLowerCase().includes(t))) {
+        if (['hi', 'hello', 'kamusta'].some(w => newMessage.toLowerCase().includes(w))) {
           await page.type('div[contenteditable="true"]', 'Hello! 🤖');
           await page.keyboard.press('Enter');
-          console.log('✅ Replied.');
-        }
-
-        // Try clicking a quick reply or postback button
-        const button = await page.$('div[aria-label="Yes"]');
-        if (button) {
-          console.log('🖱 Clicking button...');
-          await button.click();
+          console.log('✅ Replied to message');
         }
       }
-
     } catch (err) {
-      console.error('❌ Error:', err.message);
+      console.error('❌ Message read/reply error:', err.message);
     }
 
-    await new Promise(resolve => setTimeout(resolve, 5000)); // wait 5s before checking again
+    await new Promise(resolve => setTimeout(resolve, 5000));
   }
-
-  // browser.close(); // Don't close if running continuously
 })();
