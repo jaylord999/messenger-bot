@@ -1,12 +1,19 @@
 const puppeteer = require('puppeteer');
 
 (async () => {
-  const browser = await puppeteer.launch({
-    headless: false,
-    userDataDir: './fb-profile',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    defaultViewport: null
-  });
+const browser = await puppeteer.launch({
+  headless: 'new', // or true for older versions
+  executablePath: process.env.CHROME_BIN || undefined,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--no-zygote',
+    '--single-process'
+  ]
+});
+
 
   const page = await browser.newPage();
   await page.goto('https://www.messenger.com/');
