@@ -1,0 +1,11 @@
+{
+  "name": "messenger-bot",
+  "version": "1.0.0",
+  "main": "fbBot.js",
+  "scripts": {
+    "start": "node fbBot.js"
+  },
+  "dependencies": {
+    "puppeteer": "^21.3.8"
+  }
+}
