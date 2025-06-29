@@ -1,6 +1,7 @@
+# Dockerfile
 FROM node:20-slim
 
-# Install dependencies for Puppeteer
+# Install necessary packages for Puppeteer
 RUN apt-get update && apt-get install -y \
   wget \
   fonts-liberation \
@@ -29,8 +30,17 @@ RUN apt-get update && apt-get install -y \
   libu2f-udev \
   && rm -rf /var/lib/apt/lists/*
 
+# Set working directory
 WORKDIR /app
+
+# Copy all files
 COPY . .
+
+# Install dependencies
 RUN npm install
 
+# Expose port for Express
+EXPOSE 3000
+
+# Start the app
 CMD ["npm", "start"]
