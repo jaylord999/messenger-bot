@@ -1,5 +1,5 @@
 const puppeteer = require('puppeteer');
-const responseHandler = require('./ResponseHandler');
+const responseHandler = require('./responseHandler');
 
 const FB_EMAIL = process.env.FB_EMAIL;
 const FB_PASSWORD = process.env.FB_PASSWORD;
