@@ -1,11 +1,12 @@
 {
   "name": "messenger-bot",
   "version": "1.0.0",
-  "main": "fbBot.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node fbBot.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "puppeteer": "^22.8.2"
+    "puppeteer": "^22.8.2",
+    "dotenv": "^16.4.5"
   }
 }
