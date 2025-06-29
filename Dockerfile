@@ -36,8 +36,8 @@ WORKDIR /app
 # Copy all files
 COPY . .
 
-# Install dependencies
-RUN npm install
+# Install dependencies including express
+RUN npm install && npm install express
 
 # Expose port for Express
 EXPOSE 3000
