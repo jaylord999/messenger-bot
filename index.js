@@ -1,24 +1,27 @@
+const express = require('express');
 const puppeteer = require('puppeteer');
-const { getResponse } = require('./responseHandler');
-require('dotenv').config();
+const responseHandler = require('./responseHandler');
+const app = express();
 
 const FB_EMAIL = process.env.FB_EMAIL;
 const FB_PASSWORD = process.env.FB_PASSWORD;
 const THREAD_ID = process.env.THREAD_ID;
 
-function isAllowedTime() {
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const hour = now.getHours();
-
-  return (day >= 1 && day <= 5) && (day !== 5 || hour < 22) && (day !== 1 || hour >= 2);
-}
+app.get('/', (_, res) => res.send('Messenger bot is running'));
+app.listen(3000, () => console.log('🌐 Express server running on port 3000'));
 
 (async () => {
   const browser = await puppeteer.launch({
     headless: 'new',
     userDataDir: './fb-profile',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+      '--no-zygote',
+      '--single-process',
+    ],
   });
 
   const page = await browser.newPage();
@@ -31,67 +34,67 @@ function isAllowedTime() {
     await page.type('#pass', FB_PASSWORD);
     await page.click('button[name="login"]');
     await page.waitForNavigation({ waitUntil: 'networkidle2' });
+
+    if (page.url().includes('login.php')) {
+      console.error('❌ Login failed');
+      await browser.close();
+      process.exit(1);
+    }
     console.log('✅ Logged in!');
-  } catch (err) {
-    console.error('❌ Login failed:', err.message);
-    await page.screenshot({ path: 'login-error.png' });
-    process.exit(1);
+  } catch (e) {
+    console.error('⚠️ Login screen not detected — maybe already logged in');
   }
 
   console.log('➡️ Navigating to thread...');
   await page.goto(`https://www.messenger.com/t/${THREAD_ID}`);
-
-  let loaded = false;
   try {
     await page.waitForSelector('[data-testid="message-container"]', { timeout: 30000 });
-    loaded = true;
   } catch {
     console.warn('⚠️ message-container not found, trying fallback selector...');
-    try {
-      await page.waitForSelector('div[role="row"]', { timeout: 20000 });
-      loaded = true;
-    } catch {
-      console.error('❌ Fatal error: Failed to load chat UI.');
-      process.exit(1);
-    }
+    await page.waitForSelector('div[role="row"]', { timeout: 20000 });
   }
 
-  console.log('💬 Chat loaded, monitoring...');
+  console.log('🤖 Bot is running and listening...');
 
   let lastMessage = null;
 
   while (true) {
-    try {
-      if (!isAllowedTime()) {
-        console.log('⏳ Outside active hours. Waiting...');
-        await new Promise(r => setTimeout(r, 60000));
-        continue;
-      }
+    const now = new Date();
+    const isActiveTime = now.getDay() >= 1 && now.getDay() <= 5 &&
+                         (now.getDay() !== 5 || now.getHours() < 22) &&
+                         (now.getDay() !== 1 || now.getHours() >= 2);
 
-      const newMessage = await page.evaluate(() => {
-        const rows = [...document.querySelectorAll('[data-testid="message-container"], div[role="row"]')];
-        const last = rows.at(-1);
-        const textEl = last?.querySelector('[dir="auto"]');
-        return textEl?.innerText ?? null;
-      });
-
-      if (newMessage && newMessage !== lastMessage) {
-        console.log('📩 New message detected:', newMessage);
-        lastMessage = newMessage;
-
-        const response = getResponse(lastMessage);
-        if (response) {
-          await page.type('div[contenteditable="true"]', response);
-          await page.keyboard.press('Enter');
-          console.log(`✅ Replied with: ${response}`);
-        } else {
-          console.log('🕵️ No matching response rule.');
-        }
-      }
-    } catch (err) {
-      console.error('⚠️ Error while handling message:', err.message);
+    if (!isActiveTime) {
+      console.log('⏱ Outside active window — waiting...');
+      await new Promise(res => setTimeout(res, 60000));
+      continue;
     }
 
-    await new Promise(r => setTimeout(r, 5000));
+    try {
+      const latest = await page.evaluate(() => {
+        const messages = document.querySelectorAll('[data-testid="message-container"]');
+        const last = messages[messages.length - 1];
+        const text = last?.querySelector('[dir="auto"]');
+        const sender = last?.getAttribute('data-senderid') || 'unknown';
+        return { senderId: sender, text: text?.innerText || null };
+      });
+
+      if (latest.text && latest.text !== lastMessage) {
+        console.log('📩 New message:', latest.text);
+        const reply = responseHandler.processMessage(latest.senderId, latest.text);
+        if (reply) {
+          await page.type('div[contenteditable="true"]', reply);
+          await page.keyboard.press('Enter');
+          console.log('✅ Replied with:', reply);
+        } else {
+          console.log('⏭ No matching reply');
+        }
+        lastMessage = latest.text;
+      }
+    } catch (e) {
+      console.error('❌ Error in loop:', e.message);
+    }
+
+    await new Promise(res => setTimeout(res, 5000));
   }
 })();
