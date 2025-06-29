@@ -1,6 +1,6 @@
 FROM node:20-slim
 
-# Install necessary packages
+# Install necessary packages for Puppeteer
 RUN apt-get update && apt-get install -y \
   wget \
   fonts-liberation \
@@ -32,5 +32,5 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY . .
 RUN npm install
-
 CMD ["npm", "start"]
+```
